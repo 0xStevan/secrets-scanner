@@ -1,0 +1,19 @@
+# Python virtual environment — machine-specific, huge, never commit
+venv/
+
+# Compiled Python files — auto-generated, never commit
+__pycache__/
+*.pyc
+
+# Environment files — may contain real secrets, NEVER commit
+.env
+.env.local
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp

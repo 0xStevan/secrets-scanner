@@ -9,6 +9,9 @@ __pycache__/
 .env
 .env.local
 
+# Pokemon monitor live config — holds API keys / SMTP passwords / webhook URLs
+pokemon-monitor/config.json
+
 # OS-generated files
 .DS_Store
 Thumbs.db

@@ -103,11 +103,49 @@ in one channel never stops the others.
 
 ## Running it continuously
 
-- **cron / Task Scheduler:** run with `--once` on a schedule.
-- **systemd / launchd / a small VPS / Raspberry Pi:** run without `--once` so it
-  loops in-process.
-- Keep `interval_seconds` reasonable (≥ 30–60s). Faster polling won't beat the
-  retailers' own anti-bot queueing and just raises your block risk.
+Notifications only happen while the monitor is running, so for unattended use
+pick one of these. Ready-made files are in [`deploy/`](deploy/).
+
+Remembering stock state across runs: set `"state_file"` in config (it's on by
+default as `monitor-state.json` in `config.example.json`). The monitor saves
+each product's in/out-of-stock status there so the edge-trigger and cooldown
+keep working between runs — essential for the cron option below, harmless for
+the always-on options. The file is git-ignored.
+
+### Option A — systemd (always-on Linux box / VPS / Raspberry Pi)
+
+Runs in a loop and restarts on crash or reboot.
+
+```bash
+# edit User / WorkingDirectory / ExecStart paths in the file first
+sudo cp deploy/pokemon-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now pokemon-monitor
+journalctl -u pokemon-monitor -f      # live log of checks/alerts
+```
+
+### Option B — macOS (launchd)
+
+Starts at login, restarts on crash. Desktop alerts work natively here.
+
+```bash
+# edit the two paths in the file first
+cp deploy/com.pokemon-monitor.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.pokemon-monitor.plist
+```
+
+### Option C — cron (periodic one-shot checks, Linux/macOS)
+
+No long-running daemon; cron fires a single `--once` pass on a schedule. Relies
+on `state_file` to avoid repeat alerts. See [`deploy/crontab.example`](deploy/crontab.example):
+
+```cron
+*/5 * * * * cd /path/to/pokemon-monitor && /usr/bin/python3 -m pokemon_monitor --config config.json --once >> ~/pokemon-monitor.log 2>&1
+```
+
+> Keep `interval_seconds` (loop mode) or the cron frequency reasonable (≥ ~2–5
+> min). Faster polling won't beat the retailers' own anti-bot queueing and just
+> raises your block risk.
 
 ## Testing
 

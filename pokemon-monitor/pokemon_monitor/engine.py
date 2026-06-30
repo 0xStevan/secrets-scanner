@@ -38,6 +38,7 @@ class Engine:
     interval: float = 60.0
     cooldown: float = 600.0  # min seconds between alerts for the same product
     state: dict[str, ProductState] = field(default_factory=dict)
+    state_file: Path | None = None  # persist stock state across runs (for cron)
     _clock = time.time
 
     # -- construction ----------------------------------------------------
@@ -59,14 +60,18 @@ class Engine:
             min_interval=config.get("min_request_interval", 3.0),
             respect_robots=config.get("respect_robots", True),
         )
-        return cls(
+        state_file = config.get("state_file")
+        engine = cls(
             products=products,
             adapters=adapters,
             alerters=build_all(config),
             fetcher=fetcher,
             interval=config.get("interval_seconds", 60.0),
             cooldown=config.get("alert_cooldown_seconds", 600.0),
+            state_file=Path(state_file) if state_file else None,
         )
+        engine.load_state()
+        return engine
 
     # -- per-product logic ----------------------------------------------
     def _key(self, p: Product) -> str:
@@ -116,6 +121,44 @@ class Engine:
             except Exception as e:
                 log.error("alert channel %s failed: %s", alerter.name, e)
 
+    # -- state persistence ----------------------------------------------
+    # Without this, each `--once` run (e.g. from cron) forgets prior stock
+    # state and would re-alert on every run while an item stays in stock.
+    # Persisting it makes the edge-trigger + cooldown work across runs too.
+    def load_state(self) -> None:
+        if not self.state_file or not self.state_file.exists():
+            return
+        try:
+            raw = json.loads(self.state_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            log.warning("could not read state file %s: %s", self.state_file, e)
+            return
+        for key, st in raw.items():
+            # JSON has no -inf; a missing/None ts restores to "never alerted".
+            ts = st.get("last_alert_ts")
+            self.state[key] = ProductState(
+                last_in_stock=bool(st.get("last_in_stock", False)),
+                last_alert_ts=float("-inf") if ts is None else float(ts),
+            )
+
+    def save_state(self) -> None:
+        if not self.state_file:
+            return
+        out = {
+            key: {
+                "last_in_stock": st.last_in_stock,
+                "last_alert_ts": None if st.last_alert_ts == float("-inf")
+                else st.last_alert_ts,
+            }
+            for key, st in self.state.items()
+        }
+        try:
+            tmp = self.state_file.with_suffix(self.state_file.suffix + ".tmp")
+            tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
+            tmp.replace(self.state_file)  # atomic swap; no half-written state
+        except OSError as e:
+            log.warning("could not write state file %s: %s", self.state_file, e)
+
     # -- main loop -------------------------------------------------------
     def run_once(self) -> list[StockResult]:
         """One pass over all products. Returns every result (for logging/tests)."""
@@ -131,6 +174,7 @@ class Engine:
             log.info("[%s] %s — %s", product.retailer, product.name, status)
             if self.evaluate(result):
                 self.dispatch(result)
+        self.save_state()
         return results
 
     def run_forever(self) -> None:

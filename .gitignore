@@ -11,6 +11,9 @@ __pycache__/
 
 # Pokemon monitor live config — holds API keys / SMTP passwords / webhook URLs
 pokemon-monitor/config.json
+# Pokemon monitor runtime state (stock memory) — machine-local, not source
+pokemon-monitor/*.json.tmp
+pokemon-monitor/monitor-state.json
 
 # OS-generated files
 .DS_Store

@@ -79,6 +79,39 @@ class EvaluateLogic(unittest.TestCase):
         self.assertFalse(eng.evaluate(self._result(True, 50)))
 
 
+class StatePersistence(unittest.TestCase):
+    def test_round_trip_suppresses_repeat_alert(self):
+        import tempfile
+        from pathlib import Path
+
+        product = Product("walmart", "Box", "https://x/p")
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "state.json"
+
+            # First engine: item in stock -> alert, state saved.
+            e1 = make_engine()
+            e1.state_file = path
+            e1._clock = lambda: 1000.0
+            self.assertTrue(e1.evaluate(StockResult(product, in_stock=True)))
+            e1.save_state()
+            self.assertTrue(path.exists())
+
+            # Fresh engine (simulates a new cron --once run) loads the state...
+            e2 = make_engine()
+            e2.state_file = path
+            e2._clock = lambda: 1001.0
+            e2.load_state()
+            # ...so the still-in-stock item is NOT a new edge -> no repeat alert.
+            self.assertFalse(e2.evaluate(StockResult(product, in_stock=True)))
+
+    def test_missing_state_file_is_fine(self):
+        from pathlib import Path
+        e = make_engine()
+        e.state_file = Path("/nonexistent/dir/state.json")
+        e.load_state()  # must not raise
+        self.assertEqual(e.state, {})
+
+
 class FetcherPoliteness(unittest.TestCase):
     def test_throttle_waits_between_same_host(self):
         slept = []

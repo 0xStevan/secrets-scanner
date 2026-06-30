@@ -11,12 +11,14 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from . import retailers
 from .alerts import Alerter, build_all
 from .http import PoliteFetcher
 from .models import AlertEvent, Product, StockResult
+from .schedule import DropWindow, interval_for, resolve_tz
 
 log = logging.getLogger("pokemon_monitor")
 
@@ -39,6 +41,8 @@ class Engine:
     cooldown: float = 600.0  # min seconds between alerts for the same product
     state: dict[str, ProductState] = field(default_factory=dict)
     state_file: Path | None = None  # persist stock state across runs (for cron)
+    drop_windows: list[DropWindow] = field(default_factory=list)
+    tz: object = None  # tzinfo for interpreting window times; None = local
     _clock = time.time
 
     # -- construction ----------------------------------------------------
@@ -61,6 +65,7 @@ class Engine:
             respect_robots=config.get("respect_robots", True),
         )
         state_file = config.get("state_file")
+        windows = [DropWindow.from_dict(w) for w in config.get("drop_windows", [])]
         engine = cls(
             products=products,
             adapters=adapters,
@@ -69,9 +74,16 @@ class Engine:
             interval=config.get("interval_seconds", 60.0),
             cooldown=config.get("alert_cooldown_seconds", 600.0),
             state_file=Path(state_file) if state_file else None,
+            drop_windows=windows,
+            tz=resolve_tz(config.get("timezone")),
         )
         engine.load_state()
         return engine
+
+    def current_interval(self, now: datetime | None = None) -> float:
+        """Seconds to wait before the next pass, honouring any drop windows."""
+        now = now or datetime.now(self.tz)
+        return interval_for(self.drop_windows, self.interval, now)
 
     # -- per-product logic ----------------------------------------------
     def _key(self, p: Product) -> str:
@@ -178,15 +190,25 @@ class Engine:
         return results
 
     def run_forever(self) -> None:
-        log.info("watching %d product(s) every %.0fs (Ctrl-C to stop)",
-                 len(self.products), self.interval)
+        if self.drop_windows:
+            log.info("watching %d product(s); base %.0fs, %d drop window(s) "
+                     "(Ctrl-C to stop)",
+                     len(self.products), self.interval, len(self.drop_windows))
+        else:
+            log.info("watching %d product(s) every %.0fs (Ctrl-C to stop)",
+                     len(self.products), self.interval)
+        last_interval = None
         while True:
             try:
                 self.run_once()
             except KeyboardInterrupt:
                 log.info("stopped by user")
                 return
-            time.sleep(self.interval)
+            interval = self.current_interval()
+            if interval != last_interval:
+                log.info("polling every %.0fs", interval)
+                last_interval = interval
+            time.sleep(interval)
 
 
 def load_config(path: str | Path) -> dict:

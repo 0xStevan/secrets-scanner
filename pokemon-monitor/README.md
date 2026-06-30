@@ -65,6 +65,32 @@ See [`config.example.json`](config.example.json). Top-level knobs:
 | `min_request_interval` | min seconds between requests to one host | 3.0 |
 | `respect_robots` | honour robots.txt | true |
 | `alert_cooldown_seconds` | min gap between alerts for one product | 600 |
+| `timezone` | IANA tz for drop windows, e.g. `America/New_York` | machine local |
+| `drop_windows` | time-of-day fast-polling windows (see below) | none |
+
+### Drop windows (fast/slow polling)
+
+Big drops cluster in known hours (Target tends to drop ~1–5 AM, often ~3 AM then
+trickle). Polling fast 24/7 is wasteful and raises your block risk; polling slow
+misses the drop. A drop window polls fast only inside the window and relaxes the
+rest of the day:
+
+```json
+"timezone": "America/New_York",
+"drop_windows": [
+  { "start": "01:00", "end": "05:00", "interval_seconds": 20 }
+]
+```
+
+With this, the monitor checks every 20s between 1–5 AM and every
+`interval_seconds` otherwise. Windows may wrap past midnight
+(`"start": "23:00", "end": "02:00"`); if windows overlap, the tightest interval
+wins. Times use `timezone` (or the machine's local time if unset). Drop windows
+only apply to the long-running loop, not `--once`.
+
+> Reality check: even 20s polling won't beat checkout bots on a sub-minute
+> initial sellout. Drop windows are about catching the **trickle restocks** that
+> follow — those are far more winnable by a human.
 
 ### Retailers
 

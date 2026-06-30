@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS launchd agent: keeps the monitor running and restarts it on crash/login.
+  Loop mode (no --once). Desktop notifications work natively on macOS.
+
+  Install (edit the two paths first):
+    cp deploy/com.pokemon-monitor.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.pokemon-monitor.plist
+  Stop / remove:
+    launchctl unload ~/Library/LaunchAgents/com.pokemon-monitor.plist
+  Logs: see StandardOutPath / StandardErrorPath below.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.pokemon-monitor</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-m</string>
+        <string>pokemon_monitor</string>
+        <string>--config</string>
+        <string>config.json</string>
+    </array>
+
+    <!-- EDIT: absolute path to the pokemon-monitor directory -->
+    <key>WorkingDirectory</key>
+    <string>/Users/YOUR_USERNAME/secrets-scanner/pokemon-monitor</string>
+
+    <!-- Start at login and restart if it ever exits -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/YOUR_USERNAME/pokemon-monitor.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOUR_USERNAME/pokemon-monitor.log</string>
+</dict>
+</plist>

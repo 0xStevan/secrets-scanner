@@ -1,0 +1,77 @@
+{
+  "interval_seconds": 60,
+  "min_request_interval": 3.0,
+  "respect_robots": true,
+  "alert_cooldown_seconds": 600,
+  "state_file": "monitor-state.json",
+
+  "timezone": "America/New_York",
+  "drop_windows": [
+    { "start": "01:00", "end": "05:00", "interval_seconds": 20 }
+  ],
+
+  "retailers": {
+    "bestbuy": {
+      "api_key": "YOUR_BESTBUY_API_KEY"
+    },
+    "target": {
+      "api_key": "YOUR_TARGET_WEB_API_KEY",
+      "store_id": "1234",
+      "zip": "90210",
+      "state": "CA"
+    }
+  },
+
+  "alerts": {
+    "webhook": {
+      "enabled": true,
+      "url": "https://discord.com/api/webhooks/XXXX/YYYY"
+    },
+    "email": {
+      "enabled": false,
+      "host": "smtp.gmail.com",
+      "port": 587,
+      "use_tls": true,
+      "username": "you@gmail.com",
+      "password": "your-gmail-app-password",
+      "from": "you@gmail.com",
+      "to": ["you@gmail.com"]
+    },
+    "pushover": {
+      "enabled": false,
+      "token": "YOUR_PUSHOVER_APP_TOKEN",
+      "user": "YOUR_PUSHOVER_USER_KEY",
+      "priority": 1
+    },
+    "desktop": {
+      "enabled": false
+    }
+  },
+
+  "products": [
+    {
+      "retailer": "bestbuy",
+      "name": "Pokemon TCG Scarlet & Violet Booster Box",
+      "sku": "6418599",
+      "url": "https://www.bestbuy.com/site/6418599.p",
+      "max_price": 160.00
+    },
+    {
+      "retailer": "target",
+      "name": "Pokemon Ascended Heroes Elite Trainer Box",
+      "sku": "95082118",
+      "url": "https://www.target.com/p/-/A-95082118",
+      "max_price": 60.00
+    },
+    {
+      "retailer": "walmart",
+      "name": "Pokemon TCG Booster Bundle",
+      "url": "https://www.walmart.com/ip/EXAMPLE/123456789"
+    },
+    {
+      "retailer": "pokemoncenter",
+      "name": "Pokemon Center Exclusive Collection",
+      "url": "https://www.pokemoncenter.com/product/EXAMPLE"
+    }
+  ]
+}

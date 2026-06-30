@@ -1,0 +1,18 @@
+# Cron alternative to the systemd service — runs a single check pass on a
+# schedule instead of looping in-process. Good if you don't want a long-running
+# daemon. Edit it with:  crontab -e   (then paste a line below)
+#
+# Each run is one `--once` pass: it checks every product once and exits.
+# Set "state_file" in config.json (it's on by default in config.example.json)
+# so each run remembers the previous run's stock state — that keeps the
+# edge-trigger working across cron runs and stops repeat alerts while an item
+# stays in stock. Keep the schedule sensible (every few minutes) to stay polite
+# and avoid block lists.
+#
+# Replace /home/you/secrets-scanner/pokemon-monitor with your real path.
+
+# Every 5 minutes:
+*/5 * * * * cd /home/you/secrets-scanner/pokemon-monitor && /usr/bin/python3 -m pokemon_monitor --config config.json --once >> /home/you/pokemon-monitor.log 2>&1
+
+# Every 2 minutes (more aggressive — only if the retailers tolerate it):
+# */2 * * * * cd /home/you/secrets-scanner/pokemon-monitor && /usr/bin/python3 -m pokemon_monitor --config config.json --once >> /home/you/pokemon-monitor.log 2>&1

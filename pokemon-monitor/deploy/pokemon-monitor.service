@@ -1,0 +1,41 @@
+[Unit]
+# systemd service: run the monitor continuously and restart it on failure /
+# reboot. Loop mode (no --once) — the process polls every interval_seconds.
+#
+# Install (edit the three placeholders first):
+#   sudo cp deploy/pokemon-monitor.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pokemon-monitor
+# Check it:
+#   systemctl status pokemon-monitor
+#   journalctl -u pokemon-monitor -f      # live alert/check log
+Description=Pokemon market restock monitor (alerts only, no auto-purchase)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# --- EDIT THESE THREE ---
+User=YOUR_USERNAME
+WorkingDirectory=/home/YOUR_USERNAME/secrets-scanner/pokemon-monitor
+ExecStart=/usr/bin/python3 -m pokemon_monitor --config config.json
+# ------------------------
+
+# Restart on crash and after reboot; back off so a broken config doesn't spin.
+Restart=on-failure
+RestartSec=15
+
+# Light hardening — the monitor only needs to read its own dir, write its state
+# file there, and reach the network.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+# Allow writing the runtime state file (monitor-state.json) in the working dir.
+# Must match WorkingDirectory above.
+ReadWritePaths=/home/YOUR_USERNAME/secrets-scanner/pokemon-monitor
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

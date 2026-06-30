@@ -53,9 +53,10 @@
     },
     {
       "retailer": "target",
-      "name": "Pokemon TCG Elite Trainer Box",
-      "sku": "88897603",
-      "url": "https://www.target.com/p/-/A-88897603"
+      "name": "Pokemon Ascended Heroes Elite Trainer Box",
+      "sku": "95082118",
+      "url": "https://www.target.com/p/-/A-95082118",
+      "max_price": 60.00
     },
     {
       "retailer": "walmart",
